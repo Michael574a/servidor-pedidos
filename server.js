@@ -1,32 +1,43 @@
+const { Pool } = require('pg');
 const express = require('express');
 const cors = require('cors');
-const app = express();
+require('dotenv').config();
 
+const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 1. Endpoint de Login (Simulado para la tarea)
-app.post('/auth/login', (req, res) => {
+// Conexión a la base de datos de Render
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL, // Render te da esta variable automáticamente
+    ssl: { rejectUnauthorized: false }
+});
+
+// LOGIN REAL
+app.post('/auth/login', async (req, res) => {
     const { username, password } = req.body;
-    // Aquí podrías validar contra DB, por ahora aceptamos cualquier usuario
-    if (username && password) {
-        res.json({ token: "token_generado_por_render_12345" });
-    } else {
-        res.status(401).json({ error: "Credenciales inválidas" });
+    try {
+        const result = await pool.query('SELECT * FROM usuarios WHERE username = $1 AND password = $2', [username, password]);
+        if (result.rows.length > 0) {
+            res.json({ token: "TOKEN_REAL_DE_SESION" });
+        } else {
+            res.status(401).json({ error: "Usuario o clave incorrecta" });
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 
-// 2. Endpoint de Pedidos
-app.post('/orders', (req, res) => {
-    const authHeader = req.headers['authorization'];
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(403).json({ error: "No autorizado. Falta Token." });
+// GUARDAR PEDIDO REAL
+app.post('/orders', async (req, res) => {
+    const { nombre_cliente, telefono, direccion, detalle, tipo_pago, latitud, longitud, foto_path } = req.body;
+    try {
+        const query = 'INSERT INTO pedidos (nombre_cliente, telefono, direccion, detalle, tipo_pago, latitud, longitud, foto_url) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)';
+        await pool.query(query, [nombre_cliente, telefono, direccion, detalle, tipo_pago, latitud, longitud, foto_path]);
+        res.status(201).json({ mensaje: "Pedido guardado en la nube" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
-
-    console.log("Pedido recibido:", req.body);
-    // Aquí el código para guardar en la base de datos de Render
-    res.status(201).json({ mensaje: "Pedido guardado en el servidor con éxito" });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Servidor corriendo en puerto ${PORT}`));
+app.listen(process.env.PORT || 3000);
