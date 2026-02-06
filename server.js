@@ -24,6 +24,20 @@ app.get('/orders', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+// Obtener un solo pedido por ID
+app.get('/orders/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query('SELECT * FROM pedidos WHERE id = $1', [id]);
+        if (result.rows.length > 0) {
+            res.json(result.rows[0]);
+        } else {
+            res.status(404).json({ error: "Pedido no encontrado" });
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 // LOGIN REAL
 app.post('/auth/login', async (req, res) => {
     const { username, password } = req.body;
