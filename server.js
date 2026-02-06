@@ -12,7 +12,18 @@ const pool = new Pool({
     connectionString: process.env.DATABASE_URL, // Render te da esta variable automáticamente
     ssl: { rejectUnauthorized: false }
 });
+// Endpoint para obtener todos los pedidos
+app.get('/orders', async (req, res) => {
+    const authHeader = req.headers['authorization'];
+    if (!authHeader) return res.status(403).json({ error: "No autorizado" });
 
+    try {
+        const result = await pool.query('SELECT * FROM pedidos ORDER BY fecha_hora DESC');
+        res.json(result.rows); // Enviamos todos los pedidos a la App
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 // LOGIN REAL
 app.post('/auth/login', async (req, res) => {
     const { username, password } = req.body;
